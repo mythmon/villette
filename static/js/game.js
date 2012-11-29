@@ -1,6 +1,6 @@
 (function() {
 
-var WIDTH = 320, HEIGHT = 240, SCALE = 2;
+var WIDTH = 640, HEIGHT = 480, SCALE = 1;
 var buffer, canvas, context;
 var running = false;
 var TWOPI = Math.PI * 2;
@@ -114,7 +114,7 @@ function Target(options) {
     color: '#00f',
     active: true,
     vy: 10
-  });
+  }, options);
 }
 
 Target.prototype = new Actor();
@@ -141,6 +141,7 @@ function init() {
   context.scale(SCALE, SCALE);
 
   $('#game').append(canvas);
+  $('#game').append('<span id="info"/>');
 
   actors.push(new Denizen());
 
@@ -150,6 +151,16 @@ function init() {
     coords.y = Math.round(coords.y / SCALE);
     actors.push(new Target(coords));
   });
+
+  stats = new Stats();
+  stats.setMode(0); // 0: fps, 1: ms
+
+  $(stats.domElement).css({
+    position: 'absolute',
+    right: '8px',
+    top: '8px',
+    opacity: '0.1'
+  }).appendTo('#game');
 
   start();
 }
@@ -161,11 +172,15 @@ function start() {
 }
 
 function loop() {
+  stats.begin();
+
   tick();
   render();
   if (running) {
     requestFrame(loop, canvas);
   }
+
+  stats.end();
 }
 
 function tick() {
@@ -182,7 +197,7 @@ function tick() {
 }
 
 function render() {
-  context.fillStyle = '#888';
+  context.fillStyle = '#fff';
   context.fillRect(0, 0, WIDTH * SCALE, HEIGHT * SCALE);
 
   _.each(_.clone(actors), function(actor) {
