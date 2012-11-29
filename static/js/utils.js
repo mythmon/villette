@@ -28,3 +28,8 @@ function relMouseCoords(event){
   return {x:canvasX, y:canvasY};
 }
 
+function distance(o1, o2) {
+  var dx = o1.x - o2.x;
+  var dy = o1.y - o2.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
