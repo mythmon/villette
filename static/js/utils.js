@@ -33,3 +33,29 @@ function distance(o1, o2) {
   var dy = o1.y - o2.y;
   return Math.sqrt(dx * dx + dy * dy);
 }
+
+var _nextObjId = 1;
+function addId(obj) {
+  if (obj.id) {
+    return obj.id;
+  }
+  obj.id = _nextObjId;
+  _nextObjId++;
+  return obj.id;
+}
+
+String.prototype.format = function(obj) {
+  var args = arguments;
+  var str = this;
+  // Support either an object, or a series.
+  return str.replace(/\{[\w\d_-]+\}/g, function(part) {
+    // Strip off {}.
+    part = part.slice(1, -1);
+    var index = parseInt(part, 10);
+    if (isNaN(index)) {
+      return obj[part];
+    } else {
+      return args[index];
+    }
+  });
+};
