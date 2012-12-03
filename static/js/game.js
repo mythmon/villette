@@ -182,8 +182,7 @@ function init() {
   $('#game').append('<div class="overlay"/>');
 
   graph = new GraphVisualizer();
-  denizen = new Denizen();
-  denizen.navTo(graph.graph, graph.graph.nodes[0]);
+  denizen = new Denizen({x: graph.graph.nodes[0].x, y: graph.graph.nodes[0].y});
 
   actors.push(graph);
   actors.push(denizen);
