@@ -108,6 +108,7 @@ function GraphVisualizer(options) {
       var index = Math.round(Math.random() * nodeCount);
       index %= nodeCount;
       n.links.push(g.nodes[index]);
+      g.nodes[index].links.push(n);
     }
   });
 
