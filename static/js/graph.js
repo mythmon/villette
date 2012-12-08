@@ -97,3 +97,82 @@ function Node(options) {
   addId(this);
 }
 /* end Node */
+
+
+/* class GraphVisualizer */
+function GraphVisualizer(options) {
+  Actor.call(this, options);
+
+  var g = new Graph();
+  var nodeCount = 10;
+  var linkCount = 1;
+  for (var i=0; i < nodeCount; i++) {
+    g.nodes.push(new Node({
+      x: Math.random() * WIDTH * 0.8 + WIDTH * 0.1,
+      y: Math.random() * HEIGHT * 0.8 + HEIGHT * 0.1
+    }));
+  }
+  _.each(g.nodes, function(n) {
+    for (var i=0; i < linkCount; i++) {
+      var index = Math.round(Math.random() * nodeCount);
+      index %= nodeCount;
+      n.links.push(g.nodes[index]);
+      g.nodes[index].links.push(n);
+    }
+  });
+
+  labels = {};
+  _.each(g.nodes, function(node) {
+    labels[node.id] = $('<label>').appendTo('.overlay');
+  });
+
+  _.extend(this, {
+    graph: g,
+    labels: labels
+  }, options);
+}
+
+GraphVisualizer.prototype = new Actor();
+
+GraphVisualizer.prototype.tick = function() {
+  _.each(this.graph.nodes, function(node) {
+    self.labels[node.id]
+      .text('{id}'.format(node))
+      .css({
+        left: (node.x + 10) + 'px',
+        top: (node.y + 10) + 'px'
+      });
+  });
+};
+
+GraphVisualizer.prototype.draw = function(ctx) {
+  var links = {};
+
+  _.each(this.graph.nodes, function(n1) {
+    _.each(n1.links, function(n2) {
+      var key;
+      if (n1.id < n2.id) {
+        key = [n1.id, n2.id];
+      } else {
+        key = [n2.id, n1.id];
+      }
+      if (!(key in links)) {
+        links[key] = [n1, n2];
+      }
+    });
+  });
+
+  _.each(links, function(nodes) {
+    ctx.beginPath();
+    ctx.moveTo(nodes[0].x, nodes[0].y);
+    ctx.lineTo(nodes[1].x, nodes[1].y);
+    ctx.stroke();
+  });
+
+  _.each(this.graph.nodes, function(node) {
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, 10, 0, 6.28);
+    ctx.stroke();
+  });
+};
+/* end GraphVisualizer */

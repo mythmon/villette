@@ -1,51 +1,43 @@
+/*global SpriteSheet, Sprite, Actor*/
 (function() {
 
-var WIDTH = 640, HEIGHT = 480;
+WIDTH = 640, HEIGHT = 480;
 var buffer, canvas, context;
 var running = false;
-var TWOPI = Math.PI * 2;
 var actors = [];
 
 var graph;
 var denizen;
 
 
-/* class Actor */
-function Actor(options) {
-  _.extend(this, {
-    x: 16, y: 16,
-    w: 16, h: 16,
-    vx: 0, vy: 0,
-    color: '#fff'
-  }, options);
-}
-
-Actor.prototype.tick = function(dt) {
-  this.x += this.vx * dt;
-  this.y += this.vy * dt;
-};
-
-Actor.prototype.draw = function(ctx) {
-  ctx.fillStyle = this.color;
-  var x = Math.round(this.x - this.w / 2);
-  var y = Math.round(this.y - this.h / 2);
-  ctx.fillRect(x, y, Math.round(this.w), Math.round(this.h));
-};
-/* end Actor */
-
-
 /* class Denizen */
 function Denizen(options) {
   Actor.call(this, options);
   _.extend(this, {
-    color: '#f00',
     speed: 100,
     navNext: null,
-    navPath: []
-  });
+    navPath: [],
+    sprite: null
+  }, options);
 }
 
 Denizen.prototype = new Actor();
+
+function getDir(x, y) {
+  if (Math.abs(x) < Math.abs(y)) {
+    if (y < 0) {
+      return 'north';
+    } else {
+      return 'south';
+    }
+  } else {
+    if (x > 0) {
+      return 'east';
+    } else {
+      return 'west';
+    }
+  }
+}
 
 Denizen.prototype.tick = function(dt) {
   Actor.prototype.tick.call(this, dt);
@@ -76,6 +68,13 @@ Denizen.prototype.tick = function(dt) {
       this.vy = dy * scale;
     }
   }
+
+  if (Math.abs(this.vx) > 0 || Math.abs(this.vy) > 0) {
+    this.image.dir = getDir(this.vx, this.vy);
+    this.image.state = 'walk';
+  } else {
+    this.image.state = 'stand';
+  }
 };
 
 Denizen.prototype.navTo = function(graph, destination) {
@@ -90,84 +89,6 @@ Denizen.prototype.navTo = function(graph, destination) {
 /* end Denizen */
 
 
-/* class GraphVisualizer */
-function GraphVisualizer(options) {
-  Actor.call(this, options);
-
-  var g = new Graph();
-  var nodeCount = 10;
-  var linkCount = 1;
-  for (var i=0; i < nodeCount; i++) {
-    g.nodes.push(new Node({
-      x: Math.random() * WIDTH * 0.8 + WIDTH * 0.1,
-      y: Math.random() * HEIGHT * 0.8 + HEIGHT * 0.1
-    }));
-  }
-  _.each(g.nodes, function(n) {
-    for (var i=0; i < linkCount; i++) {
-      var index = Math.round(Math.random() * nodeCount);
-      index %= nodeCount;
-      n.links.push(g.nodes[index]);
-      g.nodes[index].links.push(n);
-    }
-  });
-
-  labels = {};
-  _.each(g.nodes, function(node) {
-    labels[node.id] = $('<label>').appendTo('.overlay');
-    console.log(labels[node.id]);
-  });
-
-  _.extend(this, {
-    graph: g,
-    labels: labels
-  }, options);
-}
-
-GraphVisualizer.prototype = new Actor();
-
-GraphVisualizer.prototype.tick = function() {
-  _.each(this.graph.nodes, function(node) {
-    self.labels[node.id]
-      .text('{id}'.format(node))
-      .css({
-        left: (node.x + 10) + 'px',
-        top: (node.y + 10) + 'px'
-      });
-  });
-};
-
-GraphVisualizer.prototype.draw = function(ctx) {
-  var links = {};
-
-  _.each(this.graph.nodes, function(n1) {
-    _.each(n1.links, function(n2) {
-      var key;
-      if (n1.id < n2.id) {
-        key = [n1.id, n2.id];
-      } else {
-        key = [n2.id, n1.id];
-      }
-      if (!(key in links)) {
-        links[key] = [n1, n2];
-      }
-    });
-  });
-
-  _.each(links, function(nodes) {
-    ctx.beginPath();
-    ctx.moveTo(nodes[0].x, nodes[0].y);
-    ctx.lineTo(nodes[1].x, nodes[1].y);
-    ctx.stroke();
-  });
-
-  _.each(this.graph.nodes, function(node) {
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, 10, 0, 6.28);
-    ctx.stroke();
-  });
-};
-/* end GraphVisualizer */
 
 
 function init() {
@@ -182,8 +103,56 @@ function init() {
   $('#game').append('<span id="info"/>');
   $('#game').append('<div class="overlay"/>');
 
+  var sprites = {};
+  for (i=0; i < 9; i++) {
+    sprites['north' + i] = {tx: i, ty: 0};
+    sprites['west' + i] = {tx: i, ty: 1};
+    sprites['south' + i] = {tx: i, ty: 2};
+    sprites['east' + i] = {tx: i, ty: 3};
+  }
+  var denizenSpriteSheet = new SpriteSheet({
+    src: 'img/sheets/princess.png',
+    tile_width: 64,
+    tile_height: 64,
+    sprites: sprites,
+    callback: start
+  });
+
+  var frames;
+  var animations = {};
+  var dirs = ['north', 'west', 'south', 'east'];
+  for (i = 0; i < dirs.length; i++) {
+    var dir = dirs[i];
+    frames = [];
+    for (j=0; j < 9; j++) {
+      frames.push({name: dir + j, time: 0.16});
+    }
+    var anim = new Animation({
+      cx: 32, cy: 56,
+      sheet: denizenSpriteSheet,
+      frames: frames
+    });
+    animations[dir + '_walk'] = anim;
+
+    animations[dir + '_stand'] = new Animation({
+      cx: 32, cy: 56,
+      sheet: denizenSpriteSheet,
+      frames: [{name: dir + '0', time: '100'}]
+    });
+  }
+  var denizenAnimationSet = new AnimationSet({
+    animations: animations,
+    dir: 'south',
+    state: 'stand',
+    selector: '{dir}_{state}'
+  });
+
   graph = new GraphVisualizer();
-  denizen = new Denizen({x: graph.graph.nodes[0].x, y: graph.graph.nodes[0].y});
+  denizen = new Denizen({
+    x: graph.graph.nodes[0].x,
+    y: graph.graph.nodes[0].y,
+    image: denizenAnimationSet
+  });
 
   actors.push(graph);
   actors.push(denizen);
@@ -203,17 +172,18 @@ function init() {
     opacity: '0.1'
   }).appendTo('#game');
 
-  start();
+  ready = true;
 }
 
 function start() {
+  console.log('start');
   running = true;
   lastTick = +new Date();
   loop();
 }
 
 function loop() {
-  stats.begin();
+  if (stats !== undefined) stats.begin();
 
   tick();
   render();
@@ -221,7 +191,7 @@ function loop() {
     requestFrame(loop, canvas);
   }
 
-  stats.end();
+  if (stats !== undefined) stats.end();
 }
 
 function tick() {
